@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">syncR</string>
+    <string name="notification_channel_name">Sync Status</string>
+    <string name="notification_channel_desc">Shows syncR file synchronization status</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_unconfigured">Unconfigured — add config.json to app storage</string>
+</resources>
