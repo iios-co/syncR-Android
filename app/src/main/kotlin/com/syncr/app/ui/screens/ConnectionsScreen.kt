@@ -1,5 +1,9 @@
 package com.syncr.app.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -34,8 +39,17 @@ fun ConnectionsScreen(
     onConnectionSaved: () -> Unit
 ) {
     val connections by viewModel.connections.collectAsState()
+    val context = LocalContext.current
     var showForm by remember { mutableStateOf(connections.isEmpty()) }
     var editing by remember { mutableStateOf<SmbConnection?>(null) }
+    var pendingConnectionTest by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val test = pendingConnectionTest
+        pendingConnectionTest = null
+        if (granted) test?.invoke()
+    }
 
     Scaffold(
         topBar = {
@@ -65,16 +79,24 @@ fun ConnectionsScreen(
                     existingPassword = editing?.let { viewModel.getPassword(it.id) } ?: "",
                     testResult = viewModel.testResult.collectAsState().value,
                     onTest = { host, port, user, pass, domain, share ->
-                        val cleanHost = host.trim('\\', '/', ' ')
-                        val cleanShare = share.trim('\\', '/', ' ')
-                        val conn = (editing ?: SmbConnection(
-                            name = "", host = cleanHost, port = port,
-                            username = user, domain = domain, share = cleanShare
-                        )).copy(
-                            host = cleanHost, port = port, username = user,
-                            domain = domain, share = cleanShare
-                        )
-                        viewModel.testAndSaveConnection(conn, pass)
+                        val testConnection = {
+                            val cleanHost = host.trim('\\', '/', ' ')
+                            val cleanShare = share.trim('\\', '/', ' ')
+                            val conn = (editing ?: SmbConnection(
+                                name = "", host = cleanHost, port = port,
+                                username = user, domain = domain, share = cleanShare
+                            )).copy(
+                                host = cleanHost, port = port, username = user,
+                                domain = domain, share = cleanShare
+                            )
+                            viewModel.testAndSaveConnection(conn, pass)
+                        }
+                        if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                            testConnection()
+                        } else {
+                            pendingConnectionTest = testConnection
+                            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
                     },
                     onSave = { conn, password ->
                         showForm = false

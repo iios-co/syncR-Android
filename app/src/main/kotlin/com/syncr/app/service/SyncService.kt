@@ -243,6 +243,7 @@ class SyncService : Service() {
         
         val netState = networkStateManager.state.value
         val ssid = networkStateManager.currentSsid
+            ?: NetworkStateManager.getCurrentSsidLegacy(this)
         if (netState == NetworkState.Offline) {
             Log.d(TAG, "drainQueue skipped: network Offline (task=${ctx.task.id})")
             return
@@ -326,6 +327,7 @@ class SyncService : Service() {
                         val taskStatus = SyncState.status.value.taskStatuses[task.id]
                         if (!(taskStatus?.paused == true || paused)) {
                             val ssid = networkStateManager.currentSsid
+                                ?: NetworkStateManager.getCurrentSsidLegacy(this@SyncService)
                             if (networkStateManager.state.value == NetworkState.Online && isNetworkAllowed(task, ssid)) {
                                 runSinglePullTask(task)
                             }
