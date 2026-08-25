@@ -359,6 +359,11 @@ private fun extractFilesystemPath(uri: Uri): String? {
         val docId = DocumentsContract.getTreeDocumentId(uri)
         // docId format for external storage: "primary:DCIM/Camera" or "primary:Download"
         if (docId != null) {
+            // The Downloads provider exposes its root as "downloads" rather than
+            // primary:Download, even though it maps to the same filesystem folder.
+            if (docId == "downloads" || docId == "Download") {
+                return "/storage/emulated/0/Download"
+            }
             if (docId.startsWith("primary:")) {
                 return "/storage/emulated/0/" + docId.removePrefix("primary:")
             }
@@ -378,6 +383,11 @@ private fun extractFilesystemPath(uri: Uri): String? {
     // Method 2: Parse the URI path directly
     val uriStr = uri.toString()
     val decoded = try { java.net.URLDecoder.decode(uriStr, "UTF-8") } catch (_: Exception) { uriStr }
+
+    if (uri.authority == "com.android.providers.downloads.documents" &&
+        (decoded.contains("/tree/downloads") || decoded.contains("/tree/Download"))) {
+        return "/storage/emulated/0/Download"
+    }
 
     // ExternalStorageProvider pattern
     val primaryIdx = decoded.indexOf("primary:")
